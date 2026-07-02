@@ -215,16 +215,50 @@ graph".
     app** (Power BI embedded system dashboard or a report on the Case
     form) — agents never leave CE, and the report can be pre-filtered by
     the open case;
-  - mechanics work in the Anvaigo app on mobile → the pragmatic route is
-    the **Power BI mobile app** plus **deep links**: a report URL with a
-    filter (`?filter=Nodes/serial_no eq 'SN-100234'`) can be attached to
-    the service order so one tap opens the component card. Embedding
-    inside Anvaigo depends on its webview capabilities — to verify.
+  - mechanics work in the Anvaigo app on mobile — see §7.3, this case
+    deserves its own decision.
 - **Row-level security (RLS)** is available if some group must see only
   its slice (e.g., by territory), but for internal service data it is
   likely unnecessary — simpler to skip it.
 - **Freshness**: scheduled refresh (e.g., every 2–4 hours; Pro allows 8/day,
   capacity up to 48/day). Both sources are cloud — no gateway.
+
+### 7.3. Mechanics on phones (Anvaigo)
+
+Mechanics work on mobile through the Anvaigo app on top of BC. Their
+information need is narrow and predictable: *"the history of the
+installation / component I am standing next to"* — they do not need
+free-form graph exploration. Three options, cheapest-friction first:
+
+1. **Bring the CE data into BC instead of bringing mechanics into
+   Power BI (recommended start).** Sync a compact case summary from CE
+   into BC (a small custom table: case number, title, status, created/
+   closed dates, resolution notes, linked service item / BOM line) via
+   Power Automate or a Logic App on a schedule. Expose it in Anvaigo as a
+   related list on the Service Order / Service Item form. Result:
+   mechanics see the case history **inside the app they already use** —
+   no new app, no Power BI licenses for them, works with Anvaigo's
+   offline sync like any other BC data. This solves the actual mechanics'
+   problem ("cannot see CE case history") head-on.
+2. **Deep links into the Power BI mobile app.** Mechanics install the
+   Power BI mobile app and sign in with their existing Entra ID account
+   (the same one Anvaigo/BC uses). A URL field or action on the service
+   order in Anvaigo opens the report pre-filtered to the serial number
+   (`?filter=Nodes/serial_no eq 'SN-...'`) — `app.powerbi.com` links open
+   in the mobile app when installed. Requires a viewer license per
+   mechanic (Pro, or free on Fabric capacity) and **mobile-layout report
+   pages** (portrait-optimized entity cards). Good as a second step for
+   mechanics who want the full picture.
+3. **Webview inside Anvaigo.** Only if Anvaigo supports embedding web
+   pages / opening an in-app browser with Entra ID sign-in — to verify
+   with the Anvaigo documentation or partner. Even then, interactive
+   Power BI auth inside a webview is often fragile on mobile; option 2 is
+   usually the more robust variant of the same idea. (Never use
+   publish-to-web "anyone with the link" for this data.)
+
+Recommendation: **option 1 now, option 2 as an opt-in later.** The graph
+report in Power BI remains the tool for Service Desk and office roles;
+mechanics get the narrow slice they need inside Anvaigo.
 
 ## 8. Prototype
 
@@ -266,4 +300,7 @@ before touching the live systems.
    indexing?
 6. Viewer licensing: how many mechanics need access (Pro per user vs
    capacity)? Can the Anvaigo app open external URLs / embed a webview
-   (for deep links into the report)?
+   (for deep links into the report)? See §7.3 for the options.
+7. For the case-summary sync into BC (§7.3, option 1): which fields do
+   mechanics actually need from a case, and is Power Automate available
+   in the tenant?
