@@ -141,7 +141,12 @@ Differences from the original picture:
 
 - a **machine** level (excavator) is added between the branch and the
   installation: otherwise the case "equipment was removed from one machine
-  and mounted on another" cannot be tracked;
+  and mounted on another" cannot be tracked. *Status update:* machines are
+  **not tracked today** (Dataverse has service territories, but they are
+  not maintained), so the machine level and equipment movement tracking
+  are moved to the luxury maximum — see
+  [`implementation-design.md`](implementation-design.md), the equipment
+  movement tracker;
 - the **Service Item is produced by the Assembly Order** rather than
   hanging off the installation by itself — the chain
   "sale → assembly → serviceable object" is visible;
@@ -179,10 +184,17 @@ fast search and navigation — no AI, just graph theory fundamentals:
   neighbors, the path up to the root (account), filtering by vertex type
   and by source system.
 
-**Luxury maximum:** an index of the Trimble forum as an extra layer —
-"document" vertices (forum threads) connected by edges to component models
-and problem types, so that the Service Desk can jump from a case to the
-relevant discussions in one hop.
+**Luxury maximum:**
+
+- an index of the Trimble forum as an extra layer — "document" vertices
+  (forum threads) connected by edges to component models and problem
+  types, so that the Service Desk can jump from a case to the relevant
+  discussions in one hop;
+- an **equipment movement tracker** — the customer's field actions cannot
+  be observed directly, but movements of serialized equipment between
+  installations can be recorded as dated edges without breaking the BC
+  BOM structure (design in
+  [`implementation-design.md`](implementation-design.md)).
 
 ## 6. Open questions for the implementation stage
 

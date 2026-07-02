@@ -60,11 +60,6 @@ def build() -> tuple[dict[str, dict], list[dict]]:
         if row["parent_account_id"]:
             add_edge(row["parent_account_id"], row["account_id"], "owns")
 
-    # --- BC: machines under branches ---
-    for row in read("bc_machines.csv"):
-        add_node(row["machine_id"], "Machine", row["model"], "BC")
-        add_edge(row["owner_account_id"], row["machine_id"], "owns")
-
     # --- BC: sales -> assembly -> service item chain ---
     bc_customers = {c["customer_no"]: c["ce_account_id"]
                     for c in read("bc_customers.csv")}
@@ -77,15 +72,16 @@ def build() -> tuple[dict[str, dict], list[dict]]:
                  extra_search=row["tasks"].replace(";", " "))
         add_edge(row["sales_order_no"], row["assembly_no"], "produced_by")
     for row in read("bc_service_items.csv"):
-        add_node(row["service_item_no"], "ServiceItem", row["description"], "BC")
-        add_edge(row["machine_id"], row["service_item_no"], "owns")
+        add_node(row["service_item_no"], "ServiceItem", row["description"], "BC",
+                 extra_search=row["machine_model"])
         add_edge(row["assembly_no"], row["service_item_no"], "produced_by")
-        # tie the sales chain into the ownership tree via the customer
+        # tie the installation and the sales chain to the owning account
         account_id = bc_customers.get(row["customer_no"], "")
-        assembly = row["assembly_no"]
-        sales = assembly.replace("AO-", "SO-")
-        if account_id and sales in nodes:
-            add_edge(account_id, sales, "owns")
+        sales = row["assembly_no"].replace("AO-", "SO-")
+        if account_id:
+            add_edge(account_id, row["service_item_no"], "owns")
+            if sales in nodes:
+                add_edge(account_id, sales, "owns")
 
     # --- BC: service BOM lines (components / software) ---
     for row in read("bc_service_bom.csv"):

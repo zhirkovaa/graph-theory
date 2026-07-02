@@ -59,7 +59,6 @@ def main() -> None:
 
     accounts = []          # CE accounts: main companies and branches
     bc_customers = []      # BC customers created by dual-write
-    machines = []          # machines (excavators) under branches
     sales_orders = []
     assembly_orders = []
     service_items = []     # installations
@@ -84,14 +83,13 @@ def main() -> None:
                                  "ce_account_id": branch_id})
             branch_ids.append(branch_id)
 
-    # --- Machines, installations, BOM, orders, cases ---
+    # --- Installations, BOM, orders, cases ---
+    # NOTE: machines (excavators) are not tracked in the real systems today,
+    # so the machine model is just a text attribute of the service item.
     serial_counter = 100000
     for i in range(N_INSTALLATIONS):
         branch_id = random.choice(branch_ids)
-        machine_id = f"MACH-{i+1:04d}"
-        machines.append({"machine_id": machine_id,
-                         "model": random.choice(MACHINE_MODELS),
-                         "owner_account_id": branch_id})
+        machine_model = random.choice(MACHINE_MODELS)
 
         so_no = f"SO-{i+1:05d}"
         ao_no = f"AO-{i+1:05d}"
@@ -103,8 +101,9 @@ def main() -> None:
         assembly_orders.append({"assembly_no": ao_no, "sales_order_no": so_no,
                                 "tasks": "mounting;welding;calibration"})
         service_items.append({"service_item_no": svi_no, "assembly_no": ao_no,
-                              "customer_no": customer_no, "machine_id": machine_id,
-                              "description": f"Earthworks installation on {machine_id}"})
+                              "customer_no": customer_no,
+                              "machine_model": machine_model,
+                              "description": f"Earthworks installation on {machine_model}"})
 
         # BOM lines: serialized hardware + software + bulk items
         bom_line_ids = []          # serialized/software lines, case link targets
@@ -162,7 +161,6 @@ def main() -> None:
         "ce_accounts.csv": accounts,
         "ce_cases.csv": cases,
         "bc_customers.csv": bc_customers,
-        "bc_machines.csv": machines,
         "bc_sales_orders.csv": sales_orders,
         "bc_assembly_orders.csv": assembly_orders,
         "bc_service_items.csv": service_items,

@@ -12,6 +12,7 @@ Design for the unified search and navigation solution described in
 | Account matching | **Dual-write**: the account is created in CE, then flows to BC — a shared identifier exists |
 | Volumes | **471 installations last year**; each installation has ~8–10 serialized products and ~100 products in total |
 | UI | **Power BI**: minimal custom code, accepts Python scripts, traversal algorithms and visualizations can live there |
+| Machines (excavators) | **Not tracked today** — Dataverse has service territories, but the information is not maintained. The machine level is excluded from the core model; equipment movement tracking goes to the luxury maximum (§6) |
 
 ## 2. Volume assessment
 
@@ -55,13 +56,13 @@ long as the ETL stays in M.
 
 | Table | Columns |
 |---|---|
-| `Nodes` | `node_id`, `node_type` (Account / Branch / Machine / ServiceItem / Component / Software / SalesOrder / AssemblyOrder / ServiceOrder / Case), `label`, `source_system` (CE / BC), `serial_no`, `search_text`, `root_account_id`, `path` (materialized path to the account), `depth`, `is_orphan` |
+| `Nodes` | `node_id`, `node_type` (Account / Branch / ServiceItem / Component / Software / SalesOrder / AssemblyOrder / ServiceOrder / Case), `label`, `source_system` (CE / BC), `serial_no`, `search_text`, `root_account_id`, `path` (materialized path to the account), `depth`, `is_orphan` |
 | `Edges` | `source_id`, `target_id`, `edge_type` (owns / consists_of / linked_to / escalated_to / produced_by) |
 
 Precomputed graph columns replace runtime traversal:
 
 - **`path`** — the materialized path
-  `Account / Branch / Machine / Installation / Component`. The ownership
+  `Account / Branch / Installation / Component`. The ownership
   backbone is a **tree**, so the path is unique (study notes §3). For the
   tree part DAX `PATH()` / `PATHITEM()` also works if a parent-child column
   is kept.
@@ -92,13 +93,13 @@ avoid it. Recommended split:
 2. **Entity cards** (drillthrough pages) — the 1-hop neighborhood of a
    vertex rendered as tables:
    - *Installation card*: composition (Service BOM), case history, service
-     orders, assembly order, machine/branch/account;
-   - *Component card*: serial number, which installation/machine/customer,
+     orders, assembly order, branch/account;
+   - *Component card*: serial number, which installation/customer,
      linked cases;
    - *Case card*: what it is linked to, escalation (service order), the
      path up to the account.
 3. **Hierarchy navigation** — the built-in **Decomposition Tree** visual
-   over the ownership backbone: Account → Branch → Machine → Installation →
+   over the ownership backbone: Account → Branch → Installation →
    Component. Interactive drill-down, no code.
 4. **Graph view** — the BFS neighborhood (depth 2–3) of the selected
    vertex:
@@ -123,7 +124,9 @@ avoid it. Recommended split:
 | Broken cross-system links | reachability / connected components | §2 |
 | Search | inverted index over vertex attributes (no AI) | — |
 
-## 6. Luxury maximum: Trimble forum layer
+## 6. Luxury maximum
+
+### 6.1. Trimble forum layer
 
 A separate ETL job (outside Power BI, scheduled script):
 
@@ -138,7 +141,92 @@ On the *Component card* and *Case card* pages a "related forum threads"
 section joins by component model number — one hop from a case to relevant
 discussions. Plain keyword matching, no AI.
 
-## 7. Prototype
+### 6.2. Equipment movement tracker
+
+What the customer does in the field cannot be observed directly, but
+movements of serialized equipment between installations can be *recorded*
+without breaking the BC BOM structure. The graph gives a natural design:
+
+- the **component vertex is identified by its serial number** and is
+  stable — it never disappears when equipment moves;
+- the link "component is part of installation" becomes a **dated
+  (temporal) edge**: `InstalledIn(serial_no, service_item_no, valid_from,
+  valid_to)`;
+- when a receiver moves from installation A to installation B, the old
+  edge gets `valid_to` filled and a new edge to B is created. **The BC
+  Service BOM of each installation stays untouched** — the tracker is an
+  overlay table, not a BOM rewrite;
+- the current composition of an installation = edges with empty
+  `valid_to`; the **history of a serial number** = its edges ordered by
+  date (a path through time); "as-of" queries (what was installed on date
+  X) = filtering edges by the date interval.
+
+Sources of movement events: service orders where a mechanic swaps
+hardware (captured in the Anvaigo app), or a manual entry form
+(a small Power Apps form writing to Dataverse would do). In Power BI the
+tracker adds a "movement history" section to the *Component card* and a
+composition-on-date slicer to the *Installation card*. If machines are
+ever tracked (service territories or a custom entity), they slot into the
+same pattern as one more level of dated edges.
+
+## 7. User experience: navigation and access
+
+### 7.1. How users navigate the graph (friendly and fast)
+
+The key UX decision: **users should not read a graph drawing — they should
+jump from entity to entity**. A force-directed "hairball" of 50k vertices
+is neither friendly nor fast. The navigation model:
+
+1. **Search-first**: the landing page is a search box (search slicer).
+   The user types a serial number, case number or customer name and gets
+   a short result list with type icons. One click — the entity card.
+2. **Entity cards as graph vertices**: each card (installation,
+   component, case, order, account) shows the vertex's attributes and its
+   **1-hop neighborhood as clickable tables** (drillthrough). "Moving
+   along an edge" = one click on a related row. Every hop is a filtered
+   in-memory query — instant at these volumes.
+3. **Breadcrumb = materialized path**: the precomputed
+   `Account / Branch / Installation / Component` path is shown on every
+   card as clickable levels — the user always sees where they are and can
+   jump up the tree (the unique-path property of the tree backbone).
+4. **Decomposition Tree** for top-down exploration ("what does this
+   customer have?") — the built-in interactive drill-down visual.
+5. **Ego-network picture only on demand**: a small graph drawing (BFS
+   depth 2 around the selected vertex, ~20–100 vertices) on the entity
+   card — a network custom visual or a Python visual. It is an
+   *illustration* of the neighborhood, not the primary navigation.
+
+This mirrors how graph databases build their UIs (Neo4j Bloom and
+similar): search → vertex card → expand neighbors — never "show the whole
+graph".
+
+### 7.2. How to give users view access
+
+- **Publish** the report to a Power BI **workspace**, distribute as a
+  **Power BI App** to two Entra ID security groups: Service Desk and
+  mechanics. Users get a clean read-only app, not workspace access.
+- **Licensing** (the real question of "view access"): viewers need
+  Power BI **Pro** licenses, *or* the workspace sits on **Premium/Fabric
+  capacity** (F64+) and then viewers use free licenses. For a handful of
+  Service Desk agents Pro-per-user is cheapest; count the mechanics before
+  choosing.
+- **Where users already live**:
+  - Service Desk works in CE → **embed the report into the model-driven
+    app** (Power BI embedded system dashboard or a report on the Case
+    form) — agents never leave CE, and the report can be pre-filtered by
+    the open case;
+  - mechanics work in the Anvaigo app on mobile → the pragmatic route is
+    the **Power BI mobile app** plus **deep links**: a report URL with a
+    filter (`?filter=Nodes/serial_no eq 'SN-100234'`) can be attached to
+    the service order so one tap opens the component card. Embedding
+    inside Anvaigo depends on its webview capabilities — to verify.
+- **Row-level security (RLS)** is available if some group must see only
+  its slice (e.g., by territory), but for internal service data it is
+  likely unnecessary — simpler to skip it.
+- **Freshness**: scheduled refresh (e.g., every 2–4 hours; Pro allows 8/day,
+  capacity up to 48/day). Both sources are cloud — no gateway.
+
+## 8. Prototype
 
 `prototype/` contains a dependency-free Python prototype:
 
@@ -162,11 +250,12 @@ python3 prototype/build_graph.py --search "SN-100234"   # demo: find + BFS neigh
 (Get Data → Text/CSV) to try the report pages from §4 on realistic data
 before touching the live systems.
 
-## 8. Open questions
+## 9. Open questions
 
-1. **Machines (excavators)** — are they modeled anywhere today (a custom
-   Dataverse entity? a field on the Service Item?), or does the graph
-   introduce them?
+1. ~~Machines (excavators) — are they modeled anywhere today?~~
+   **Answered:** not tracked (service territories exist in Dataverse but
+   are not maintained). Machine level excluded from the core model;
+   equipment movement tracking moved to the luxury maximum (§6.2).
 2. Which CE field(s) link a case to a service item / component — standard
    `incident` lookup or custom columns?
 3. Which BC field stores the CE account id (dual-write mapping) — needed
@@ -175,3 +264,6 @@ before touching the live systems.
    at these scales, but good to know).
 5. Does the Trimble forum offer an API/RSS, and do its terms allow
    indexing?
+6. Viewer licensing: how many mechanics need access (Pro per user vs
+   capacity)? Can the Anvaigo app open external URLs / embed a webview
+   (for deep links into the report)?
