@@ -186,14 +186,12 @@ relevant discussions in one hop.
 
 ## 6. Open questions for the implementation stage
 
-1. Clarify: "mechanics cannot see information in BC" — presumably this
-   meant mechanics cannot see information **in CE** (case history)? This
-   determines which slice of the graph is shown to whom.
-2. Where does the graph live: built on the fly from both systems' APIs, or
+
+1. Where does the graph live: built on the fly from both systems' APIs, or
    materialized (periodic sync into a separate store)?
-3. Matching keys: how are the CE Account and the BC Customer related
+2. Matching keys: how are the CE Account and the BC Customer related
    (shared identifier? Dataverse virtual tables? Dual-write?).
-4. Where does the UI live: a model-driven app in CE, a standalone web app,
+3. Where does the UI live: a model-driven app in CE, a standalone web app,
    Power BI?
 5. Volumes: how many accounts/installations/cases — this affects the
    "on the fly vs materialized" choice and the visualization approach.
