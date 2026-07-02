@@ -1,131 +1,134 @@
-# Процесс организации информации об оборудовании и сервисе
+# Equipment and Service Information Process
 
-Описание процесса продажи, монтажа и обслуживания оборудования Trimble для
-позиционирования строительной техники, и того, как данные об этом процессе
-распределены между системами. Документ — основа для проектирования
-графовой модели поиска и навигации (см. раздел «Проблема и цель»).
+Description of the sales, installation and service process for Trimble
+positioning equipment for construction machinery, and of how the data of
+this process is spread across systems. This document is the basis for
+designing a graph-based search and navigation model (see "Problem and
+goal").
 
-## 1. Контекст
+## 1. Context
 
-Компания продаёт оборудование Trimble для позиционирования строительной
-техники (экскаваторы и подобная техника) и занимается его обслуживанием.
+The company sells Trimble positioning equipment for construction machinery
+(excavators and similar) and provides service for it.
 
-**Структура клиента:**
+**Customer structure:**
 
-- **Аккаунт (Account)** — головная компания клиента;
-- у аккаунта может быть несколько **филиалов**;
-- у каждого филиала — несколько единиц **техники** (экскаваторы и т.п.);
-- на технику устанавливается оборудование Trimble — **инсталляция**.
+- **Account** — the customer's main company;
+- an account may have several **branches (subsidiaries)**;
+- each branch owns several **machines** (excavators etc.);
+- Trimble equipment mounted on a machine is an **installation**.
 
-За продажу и установку обращается либо головная компания, либо филиал.
+Either the main company or a branch requests the sale and installation.
 
-**Системы:**
+**Systems:**
 
-| Система | Роль | Данные |
+| System | Role | Data |
 |---|---|---|
-| **Business Central (BC)** | ERP: продажи, сборка, сервисные заказы | Sales Order, Bundle, Bill of Material, Item, Assembly Order, Service Item, Service Order |
-| **Dynamics CE Customer Service (Dataverse)** | Service Desk: обращения клиентов | Account, Contact, Case |
+| **Business Central (BC)** | ERP: sales, assembly, service orders | Sales Order, Bundle, Bill of Material, Item, Assembly Order, Service Item, Service Order |
+| **Dynamics CE Customer Service (Dataverse)** | Service Desk: customer requests | Account, Contact, Case |
 
-## 2. Процесс продажи и монтажа (Business Central)
+## 2. Sales and installation process (Business Central)
 
-1. Создаётся **заказ на продажу (Sales Order)** на **Bundle A** — комплект
-   оборудования.
-2. У Bundle есть **Bill of Material (BOM)** — список компонентов (**Items**):
-   - **с серийными номерами** — приёмники, экраны, контроллеры;
-   - **без серийных номеров** — кабели, крепёж.
-3. По Bundle создаётся **заказ на сборку (Assembly Order)**. Сборка — это
-   три рабочих задания для механиков:
-   - **монтаж (Mounting)**;
-   - **сварка (Welding)**;
-   - **калибровка (Calibration)**.
-4. Результат сборки — **Service Item** с **Service Bill of Material**:
-   учётная единица «инсталляция на конкретной машине» со списком фактически
-   установленных компонентов. С этого момента начинается жизненный цикл
-   обслуживания.
+1. A **Sales Order** is created for **Bundle A** — an equipment kit.
+2. The Bundle has a **Bill of Material (BOM)** — a list of components
+   (**Items**):
+   - **serialized** — receivers, screens, controllers;
+   - **non-serialized** — cables, mounting hardware.
+3. An **Assembly Order** is created for the Bundle. Assembly consists of
+   three work tasks for the mechanics:
+   - **mounting**;
+   - **welding**;
+   - **calibration**.
+4. The result of assembly is a **Service Item** with a **Service Bill of
+   Material**: the accounting unit "installation on a specific machine"
+   with the list of actually installed components. From this point the
+   service lifecycle begins.
 
 ```mermaid
 flowchart LR
     SO["Sales Order:<br/>Bundle A"] --> BOM["Bill of Material"]
-    BOM --> I1["Item: приёмник (s/n)"]
-    BOM --> I2["Item: экран (s/n)"]
-    BOM --> I3["Item: кабели, крепёж (без s/n)"]
+    BOM --> I1["Item: receiver (s/n)"]
+    BOM --> I2["Item: screen (s/n)"]
+    BOM --> I3["Item: cables, hardware (no s/n)"]
     SO --> AO["Assembly Order"]
-    AO --> T1["Задание: монтаж"]
-    AO --> T2["Задание: сварка"]
-    AO --> T3["Задание: калибровка"]
+    AO --> T1["Task: mounting"]
+    AO --> T2["Task: welding"]
+    AO --> T3["Task: calibration"]
     AO --> SVI["Service Item<br/>+ Service BOM"]
 
     style SVI fill:#4ecdc4,color:#1a3c3a
 ```
 
-## 3. Процесс обслуживания (CE + BC)
+## 3. Service process (CE + BC)
 
-1. Клиент звонит в техподдержку (**Service Desk**).
-2. В **MS Dynamics CE Customer Service** создаётся **Case**. Два сценария:
-   - **решение по телефону** — специалист помогает, кейс закрывается;
-   - **эскалация** — нужен выезд механика: из кейса в CE создаётся
-     **Service Order в BC**, компания отправляет механика.
-3. Кейс может быть привязан:
-   - к **инсталляции** целиком (Service Item);
-   - к **компоненту** внутри неё (позиция Service BOM);
-   - к **программному обеспечению** (у софта тоже есть серийный номер).
+1. The customer calls support (**Service Desk**).
+2. A **Case** is created in **MS Dynamics CE Customer Service**. Two
+   scenarios:
+   - **resolved by phone** — the agent helps, the case is closed;
+   - **escalation** — a mechanic visit is needed: a **Service Order in BC**
+     is created from the CE case, and the company dispatches a mechanic.
+3. A case can be linked to:
+   - the **installation** as a whole (Service Item);
+   - a **component** inside it (a Service BOM line);
+   - **software** (software has a serial number too).
 
 ```mermaid
 flowchart LR
     subgraph CE["Dynamics CE Customer Service (Dataverse)"]
-        CALL(["Звонок клиента"]) --> CASE["Case"]
-        CASE -->|"решено по телефону"| CLOSED(["Кейс закрыт"])
+        CALL(["Customer call"]) --> CASE["Case"]
+        CASE -->|"resolved by phone"| CLOSED(["Case closed"])
     end
     subgraph BC["Business Central"]
-        SVO["Service Order"] --> MECH(["Выезд механика"])
-        SVI["Service Item / компонент / софт"]
+        SVO["Service Order"] --> MECH(["Mechanic visit"])
+        SVI["Service Item / component / software"]
     end
-    CASE -->|"эскалация: создание из кейса"| SVO
-    CASE -.->|"привязан к"| SVI
+    CASE -->|"escalation: created from case"| SVO
+    CASE -.->|"linked to"| SVI
 
     style CASE fill:#c996f5,color:#3a1a5c
     style SVO fill:#8a92e3,color:#fff
 ```
 
-## 4. Сквозная структура данных (доработанная схема)
+## 4. End-to-end data structure (refined diagram)
 
-Исходная ментальная карта, доработанная: добавлены техника у филиалов, заказ
-на продажу и сборку как источник Service Item, разделение компонентов
-с s/n и без, софт как компонент с серийником, и границы систем.
+The original mind map, refined: machines under branches, the sales and
+assembly orders as the source of the Service Item, the split between
+serialized and non-serialized components, software as a serialized
+component, and system boundaries.
 
 ```mermaid
 flowchart LR
     ACC["Account:<br/>Main Company"]
-    ACC --> S1["Филиал 1"]
-    ACC --> S2["Филиал 2"]
-    S1 --> M3["Экскаватор C"] & M4["Экскаватор D"]
-    S2 --> M1["Экскаватор A"] & M2["Экскаватор B"]
+    ACC --> S1["Branch 1"]
+    ACC --> S2["Branch 2"]
+    S1 --> M3["Excavator C"] & M4["Excavator D"]
+    S2 --> M1["Excavator A"] & M2["Excavator B"]
 
-    M1 --> SVI_A["Service Item:<br/>инсталляция A"]
+    M1 --> SVI_A["Service Item:<br/>installation A"]
 
     subgraph BCX["Business Central"]
-        SLS["Sales Order: Bundle A"] --> ASM["Assembly Order<br/>(монтаж, сварка, калибровка)"]
+        SLS["Sales Order: Bundle A"] --> ASM["Assembly Order<br/>(mounting, welding, calibration)"]
         ASM --> SVI_A
         SVI_A --> SBOM["Service BOM"]
-        SBOM --> CMP1["Приёмник (s/n)"]
-        SBOM --> CMP2["Экран (s/n)"]
-        SBOM --> CMP3["Кабели, крепёж (без s/n)"]
-        SBOM --> CMP4["Софт (s/n)"]
+        SBOM --> CMP1["Receiver (s/n)"]
+        SBOM --> CMP2["Screen (s/n)"]
+        SBOM --> CMP3["Cables, hardware (no s/n)"]
+        SBOM --> CMP4["Software (s/n)"]
         SVO1["Service Order 1"]
         SVO2["Service Order 2"]
     end
 
     subgraph CEX["Dynamics CE (Dataverse)"]
         CS1["Case 1"]
-        CS2["Case 2 (закрыт по телефону)"]
+        CS2["Case 2 (closed by phone)"]
         CS3["Case 3"]
     end
 
-    CS1 -.->|"привязан к"| CMP1
-    CS2 -.->|"привязан к"| SVI_A
-    CS3 -.->|"привязан к"| CMP4
-    CS1 -->|"эскалация"| SVO1
-    CS3 -->|"эскалация"| SVO2
+    CS1 -.->|"linked to"| CMP1
+    CS2 -.->|"linked to"| SVI_A
+    CS3 -.->|"linked to"| CMP4
+    CS1 -->|"escalation"| SVO1
+    CS3 -->|"escalation"| SVO2
 
     style ACC fill:#d9d9d9,color:#333
     style SBOM fill:#4ecdc4,color:#1a3c3a
@@ -134,60 +137,63 @@ flowchart LR
     style CS3 fill:#c996f5,color:#3a1a5c
 ```
 
-Отличия от исходной картинки:
+Differences from the original picture:
 
-- между филиалом и инсталляцией добавлен уровень **техники** (экскаватор):
-  кейс «оборудование сняли с одной машины и поставили на другую» иначе
-  не отследить;
-- **Service Item порождается заказом на сборку**, а не висит на инсталляции
-  сам по себе — видна связь «продажа → сборка → обслуживаемый объект»;
-- «Initial Service Order (Welding, Mounting, Calibration)» с картинки — это
-  **Assembly Order** с тремя заданиями (терминология BC);
-- добавлен **софт как компонент с серийным номером** — к нему тоже
-  привязываются кейсы;
-- Service Order создаётся **из кейса** (эскалация), а не напрямую у
-  инсталляции; связь «кейс → сервисный заказ» пересекает границу систем —
-  именно здесь теряется видимость.
+- a **machine** level (excavator) is added between the branch and the
+  installation: otherwise the case "equipment was removed from one machine
+  and mounted on another" cannot be tracked;
+- the **Service Item is produced by the Assembly Order** rather than
+  hanging off the installation by itself — the chain
+  "sale → assembly → serviceable object" is visible;
+- "Initial Service Order (Welding, Mounting, Calibration)" from the picture
+  is the **Assembly Order** with three tasks (BC terminology);
+- **software is added as a serialized component** — cases can be linked to
+  it as well;
+- a Service Order is created **from a case** (escalation), not directly
+  under the installation; the "case → service order" edge crosses the
+  system boundary — this is exactly where visibility is lost.
 
-## 5. Проблема и цель
+## 5. Problem and goal
 
-**Проблема:** данные одного процесса разорваны между двумя системами.
-Service Desk (CE) не видит данных BC: состав инсталляции, серийные номера,
-историю сборки и сервисных заказов. Механики (BC) не видят историю
-обращений и переписку по кейсам в CE. Сквозной вопрос «что за оборудование
-у этого клиента и что с ним происходило» требует ручного поиска в двух
-системах.
+**Problem:** the data of a single process is split between two systems.
+The Service Desk (CE) cannot see BC data: installation composition, serial
+numbers, assembly history and service orders. Mechanics (BC) cannot see
+the case history and correspondence in CE. The end-to-end question "what
+equipment does this customer have and what happened to it" requires manual
+search in two systems.
 
-**Цель:** единый **граф** поверх Dataverse и Business Central для быстрого
-поиска и навигации — без внедрения ИИ, на основах теории графов:
+**Goal:** a single **graph** on top of Dataverse and Business Central for
+fast search and navigation — no AI, just graph theory fundamentals:
 
-- **вершины** — типизированные сущности: Account, филиал, техника,
-  Service Item, компонент (s/n), софт, Sales/Assembly/Service Order, Case;
-- **рёбра** — связи между ними (владение, состав, привязка, эскалация);
-- структура — **DAG** (направленный ациклический граф), близкий к дереву,
-  но с вершинами, имеющими несколько родителей (Service Order связан и с
-  кейсом, и с Service Item);
-- **поиск** — найти вершину по атрибуту (серийный номер, номер кейса,
-  название клиента) и показать её **окрестность**: обход графа (BFS) на
-  заданную глубину в обе стороны;
-- **навигация** — интерактивная визуализация: раскрытие соседей вершины,
-  путь до корня (аккаунта), фильтр по типам вершин и по системе-источнику.
+- **vertices** — typed entities: Account, branch, machine, Service Item,
+  serialized component, software, Sales/Assembly/Service Order, Case;
+- **edges** — relations between them (ownership, composition, linking,
+  escalation);
+- the structure is a **DAG** (directed acyclic graph), close to a tree but
+  with vertices that have several parents (a Service Order is linked both
+  to a case and to a Service Item);
+- **search** — find a vertex by attribute (serial number, case number,
+  customer name) and show its **neighborhood**: graph traversal (BFS) to a
+  given depth in both directions;
+- **navigation** — interactive visualization: expanding a vertex's
+  neighbors, the path up to the root (account), filtering by vertex type
+  and by source system.
 
-**Роскошный максимум:** индекс форума Trimble как дополнительный слой —
-вершины-«документы» (темы форума), связанные рёбрами с моделями компонентов
-и типами проблем, чтобы Service Desk из кейса за один переход попадал в
-релевантные обсуждения.
+**Luxury maximum:** an index of the Trimble forum as an extra layer —
+"document" vertices (forum threads) connected by edges to component models
+and problem types, so that the Service Desk can jump from a case to the
+relevant discussions in one hop.
 
-## 6. Открытые вопросы к этапу реализации
+## 6. Open questions for the implementation stage
 
-1. Уточнить: «механики не видят информацию в BC» — вероятно, имелось в виду,
-   что механики не видят информацию **в CE** (историю кейса)? От этого
-   зависит, кому какой срез графа показывать.
-2. Где хранить граф: строить на лету из API обеих систем, или
-   материализовать (периодическая синхронизация в отдельное хранилище)?
-3. Ключи соответствия: чем связаны Account в CE и Customer в BC
-   (общий идентификатор? Dataverse virtual tables? Dual-write?).
-4. Где живёт интерфейс: model-driven app в CE, отдельное веб-приложение,
+1. Clarify: "mechanics cannot see information in BC" — presumably this
+   meant mechanics cannot see information **in CE** (case history)? This
+   determines which slice of the graph is shown to whom.
+2. Where does the graph live: built on the fly from both systems' APIs, or
+   materialized (periodic sync into a separate store)?
+3. Matching keys: how are the CE Account and the BC Customer related
+   (shared identifier? Dataverse virtual tables? Dual-write?).
+4. Where does the UI live: a model-driven app in CE, a standalone web app,
    Power BI?
-5. Объёмы: сколько аккаунтов/инсталляций/кейсов — влияет на выбор
-   «на лету vs материализация» и на способ визуализации.
+5. Volumes: how many accounts/installations/cases — this affects the
+   "on the fly vs materialized" choice and the visualization approach.

@@ -1,12 +1,13 @@
 # graph-theory
 
-Материалы для изучения теории графов.
+Materials for studying graph theory and for designing a graph-based
+search/navigation model over service data (Business Central + Dynamics CE).
 
-## Структура
+## Structure
 
-- [`docs/service-process.md`](docs/service-process.md) — описание процесса продажи, монтажа и обслуживания оборудования Trimble (Business Central + Dynamics CE) и постановка задачи: графовая модель для сквозного поиска и навигации по данным обеих систем.
-- [`notes/konspekt-teorii-grafov.md`](notes/konspekt-teorii-grafov.md) — конспект по теории графов, составленный по книгам ниже: основные понятия, связность, деревья, кратчайшие пути, эйлеровы и гамильтоновы графы, паросочетания, потоки, планарность, раскраски, матроиды + рекомендуемый порядок изучения.
-- `graph-theory-books/` — учебники:
-  - `Textbook_Graph_2013.pdf` — Ю. Б. Буркатовская. *Теория графов. Часть 1* (ТПУ, 2014). На русском, сильная алгоритмическая часть: обходы, кратчайшие пути, центры и медианы, деревья поиска.
-  - `wilsongraph.pdf` — R. Wilson. *Introduction to Graph Theory*, 4th ed. Классическое компактное введение: от основ до планарности, раскрасок и матроидов, с решениями части задач.
-  - `graphs.pdf` — D. Grinberg. *An Introduction to Graph Theory* (Drexel, Math 530). Строгий курс с полными доказательствами: теоремы Мантеля, Турана, Холла, Менгера, matrix-tree и BEST.
+- [`docs/service-process.md`](docs/service-process.md) — description of the sales, installation and service process for Trimble equipment (Business Central + Dynamics CE) and the problem statement: a graph model for end-to-end search and navigation over the data of both systems.
+- [`notes/graph-theory-study-notes.md`](notes/graph-theory-study-notes.md) — graph theory study notes compiled from the books below: basic notions, connectivity, trees, shortest paths, Eulerian and Hamiltonian graphs, matchings, flows, planarity, coloring, matroids + a recommended study order.
+- `graph-theory-books/` — textbooks:
+  - `Textbook_Graph_2013.pdf` — Yu. B. Burkatovskaya. *Graph Theory. Part 1* (TPU, 2014). In Russian, strong on algorithms: traversals, shortest paths, centers and medians, search trees.
+  - `wilsongraph.pdf` — R. Wilson. *Introduction to Graph Theory*, 4th ed. The classic compact introduction: from basics to planarity, coloring and matroids, with solutions to some exercises.
+  - `graphs.pdf` — D. Grinberg. *An Introduction to Graph Theory* (Drexel, Math 530). A rigorous course with full proofs: Mantel, Turán, Hall, Menger, matrix-tree and BEST theorems.
